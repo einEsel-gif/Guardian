@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/guardian-logo.png" alt="Guardian logo" width="280">
+</p>
+
 # Guardian
 
 > [!WARNING]
