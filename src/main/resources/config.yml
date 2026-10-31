@@ -1,0 +1,39 @@
+# Require verification before entering the world. Restart after changing this file.
+enabled: true
+timeout-seconds: 30
+blocked:
+  mod-ids:
+    - meteor-client
+    - wurst
+    - aristois
+    - bleachhack
+    - liquidbounce
+    - inertia
+    - baritone
+    - thunderhack
+    - meteor-rejects
+    # Original Freecam is blocked. LegacyFreecam (legacyfreecam) stays allowed.
+    - freecam
+  # No Freecam filename/class rule: LegacyFreecam shares those with the original.
+  # Case-insensitive filename tokens, bounded by word separators or versions.
+  file-tokens:
+    - meteor-client
+    - wurst
+    - aristois
+    - bleachhack
+    - liquidbounce
+    - inertia
+    - baritone
+    - thunderhack
+    - meteor-rejects
+  # Class entry prefixes also detect renamed JAR files.
+  class-prefixes:
+    - meteordevelopment/meteorclient/
+    - net/wurstclient/
+    - net/ccbluex/liquidbounce/
+    - org/bleachhack/
+    - baritone/
+    - thunder/hack/
+    - anticope/rejects/
+  # Optional SHA-256 hashes of known prohibited JAR files (64 hexadecimal characters).
+  sha256: []

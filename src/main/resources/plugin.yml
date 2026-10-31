@@ -1,0 +1,6 @@
+name: Guardian
+version: '${version}'
+description: Fabric client admission checks for Paper servers.
+main: de.einesel.guardian.GuardianPlugin
+api-version: '26.3'
+authors: [einEsel_]

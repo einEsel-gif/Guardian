@@ -1,0 +1,15 @@
+.idea/
+*.iml
+target/
+dependency-reduced-pom.xml
+.build-tools/
+client/.gradle/
+client/build/
+*.log
+*.class
+.DS_Store
+Thumbs.db
+.vscode/
+*.jar
+*.zip
+!client/gradle/wrapper/gradle-wrapper.jar

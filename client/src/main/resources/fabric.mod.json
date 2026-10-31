@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "guardian",
+  "version": "${version}",
+  "name": "Guardian",
+  "description": "Checks the mods folder for prohibited mods when joining Guardian-enabled servers.",
+  "authors": ["einEsel_"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["de.einesel.guardian.GuardClient"] },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
