@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Exercises the production validator without a running Minecraft server. */
 class ClientGuardReportTest {
     private static final String CLEAN = """
-        {"protocol":1,"version":"1.0.0","nonce":"request-A","ok":true,
+        {"protocol":1,"version":"1.0.1","nonce":"request-A","ok":true,
          "modIds":["fabricloader","guardian"],"findings":[]}
         """;
 
@@ -21,7 +21,7 @@ class ClientGuardReportTest {
     @Test void blocksProhibitedId() { assertEquals(ClientGuardDecision.BLOCKED, evaluate(CLEAN.replace("fabricloader", "meteor-client"))); }
     @Test void blocksFindings() { assertEquals(ClientGuardDecision.BLOCKED, evaluate(CLEAN.replace("\"findings\":[]", "\"findings\":[\"class-rule:blocked/\"]"))); }
     @Test void rejectsReplayedNonce() { assertThrows(RuntimeException.class, () -> evaluate(CLEAN.replace("request-A", "request-B"))); }
-    @Test void rejectsWrongVersion() { assertThrows(RuntimeException.class, () -> evaluate(CLEAN.replace("1.0.0", "0.9.0"))); }
+    @Test void rejectsWrongVersion() { assertThrows(RuntimeException.class, () -> evaluate(CLEAN.replace("1.0.1", "0.9.0"))); }
     @Test void rejectsWrongProtocol() { assertThrows(RuntimeException.class, () -> evaluate(CLEAN.replace("\"protocol\":1", "\"protocol\":2"))); }
     @Test void requiresGuardianId() { assertThrows(RuntimeException.class, () -> evaluate(CLEAN.replace("guardian", "other-mod"))); }
     @Test void rejectsMissingFields() { assertThrows(RuntimeException.class, () -> evaluate("{}")); }

@@ -1,6 +1,9 @@
 # Require verification before entering the world. Restart after changing this file.
 enabled: true
+# Time allowed for a mod scan after the client is ready.
 timeout-seconds: 30
+# Time allowed for the initial client handshake (missing/old clients).
+handshake-timeout-seconds: 5
 blocked:
   mod-ids:
     - meteor-client

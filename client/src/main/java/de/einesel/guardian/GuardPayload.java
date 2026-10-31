@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 
 public record GuardPayload(Type<GuardPayload> type, byte[] bytes) implements CustomPacketPayload {
     public static final int MAX_BYTES = 30000;
+    public static final Type<GuardPayload> HELLO = new Type<>(Identifier.fromNamespaceAndPath("guardian", "hello"));
     public static final Type<GuardPayload> CHALLENGE = new Type<>(Identifier.fromNamespaceAndPath("guardian", "challenge"));
     public static final Type<GuardPayload> RESPONSE = new Type<>(Identifier.fromNamespaceAndPath("guardian", "response"));
 
