@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Detect common Xray resource packs by inspecting active terrain models and texture transparency.
+- Recheck resource packs after joining and resource reloads; disconnect when prohibited changes are found.
+- Require the resource-pack check in client reports. Update both JARs.
+
 ## 1.0.1
 
 - Fix channel registration when connecting Fabric clients to Paper.

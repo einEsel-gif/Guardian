@@ -16,7 +16,7 @@ class GuardHandshake {
         try {
             require(bytes.size in 1..512)
             val hello = JsonParser.parseString(bytes.toString(Charsets.UTF_8)).asJsonObject
-            require(hello["protocol"].asInt == 1 && hello["version"].asString == "1.0.1")
+            require(hello["protocol"].asInt == 1 && hello["version"].asString == "1.0.2")
             ready.complete(Unit)
         } catch (error: Exception) {
             ready.completeExceptionally(error)

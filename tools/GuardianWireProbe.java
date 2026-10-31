@@ -71,9 +71,12 @@ public class GuardianWireProbe implements AutoCloseable {
     void payload(String channel, String text) throws Exception {
         var packet = new ByteArrayOutputStream(); string(packet, channel); packet.write(text.getBytes(StandardCharsets.UTF_8)); send(2, packet.toByteArray());
     }
+    void playPayload(String channel, String text) throws Exception {
+        var packet = new ByteArrayOutputStream(); string(packet, channel); packet.write(text.getBytes(StandardCharsets.UTF_8)); send(22, packet.toByteArray());
+    }
     void ready(String mode) throws Exception {
         payload("minecraft:register", "guardian:challenge");
-        if (!mode.equals("register-only")) payload("guardian:hello", "{\"protocol\":1,\"version\":\"" + (mode.equals("old") ? "1.0.0" : "1.0.1") + "\"}");
+        if (!mode.equals("register-only")) payload("guardian:hello", "{\"protocol\":1,\"version\":\"" + (mode.equals("old") ? "1.0.0" : "1.0.2") + "\"}");
     }
     void login(String name) throws Exception {
         var packet = new ByteArrayOutputStream(); varInt(packet, 777); string(packet, "localhost"); new DataOutputStream(packet).writeShort(25579); varInt(packet, 2); send(0, packet.toByteArray());
@@ -88,7 +91,7 @@ public class GuardianWireProbe implements AutoCloseable {
         }
     }
     static void check(String mode, boolean allowed) throws Exception {
-        long started = System.nanoTime(); boolean challenge = false;
+        long started = System.nanoTime(); boolean challenge = false; JsonObject lastReport = null;
         try (var client = new GuardianWireProbe()) {
             client.login("Probe" + mode.replace("-", "").substring(0, Math.min(10, mode.replace("-", "").length())));
             while (true) {
@@ -100,8 +103,9 @@ public class GuardianWireProbe implements AutoCloseable {
                         challenge = true;
                         if (mode.equals("missing") || mode.equals("register-only")) throw new AssertionError("Challenge sent before HELLO");
                         var request = JsonParser.parseString(new String(packet.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
-                        var report = new JsonObject(); report.addProperty("protocol", 1); report.addProperty("version", "1.0.1"); report.addProperty("nonce", request.get("nonce").getAsString()); report.addProperty("ok", true);
-                        JsonArray ids = new JsonArray(); ids.add("guardian"); if (mode.equals("blocked")) ids.add("freecam"); if (mode.equals("legacy")) ids.add("legacyfreecam"); report.add("modIds", ids); report.add("findings", new JsonArray());
+                        var report = new JsonObject(); report.addProperty("protocol", 1); report.addProperty("version", "1.0.2"); report.addProperty("nonce", request.get("nonce").getAsString()); report.addProperty("ok", true); report.addProperty("resourcePacksChecked", !mode.equals("unchecked"));
+                        JsonArray ids = new JsonArray(); ids.add("guardian"); if (mode.equals("blocked")) ids.add("freecam"); if (mode.equals("legacy")) ids.add("legacyfreecam"); report.add("modIds", ids); JsonArray findings = new JsonArray(); if (mode.equals("xray")) findings.add("xray:transparent-terrain:stone"); report.add("findings", findings);
+                        lastReport = report;
                         client.payload("guardian:response", report.toString());
                     }
                 } else if (id == 15) {
@@ -110,12 +114,31 @@ public class GuardianWireProbe implements AutoCloseable {
                 } else if (id == 4) client.send(4, packet.readAllBytes());
                 else if (id == 5) client.send(5, packet.readAllBytes());
                 else if (id == 3) {
+                    if (mode.equals("reload-xray")) {
+                        if (!challenge || lastReport == null) throw new AssertionError("No initial check");
+                        client.send(3, new byte[0]);
+                        boolean updateSent = false;
+                        while (true) {
+                            var gamePacket = client.receive(); int gameId = varInt(gamePacket);
+                            if (!updateSent) {
+                                lastReport.getAsJsonArray("findings").add("xray:transparent-terrain:stone");
+                                client.playPayload("guardian:response", lastReport.toString()); updateSent = true;
+                            }
+                            if (gameId == 32) {
+                                String reason = new String(gamePacket.readAllBytes(), StandardCharsets.UTF_8);
+                                if (!reason.contains("Xray resource pack")) throw new AssertionError(reason);
+                                System.out.println("PASS reload-xray: server kicked an admitted player after an Xray update"); return;
+                            }
+                        }
+                    }
                     if (!allowed || !challenge) throw new AssertionError("Unexpected world admission: " + mode);
                     System.out.printf("PASS %s: admission after valid challenge/report (%.2fs)%n", mode, (System.nanoTime() - started) / 1e9); return;
                 } else if (id == 2) {
                     String reason = new String(packet.readAllBytes(), StandardCharsets.UTF_8);
                     if (allowed) throw new AssertionError("Unexpected disconnect: " + mode + " " + reason);
                     if (mode.equals("blocked") && !reason.contains("blocked mod")) throw new AssertionError(reason);
+                    if (mode.equals("xray") && !reason.contains("Xray resource pack")) throw new AssertionError(reason);
+                    if (mode.equals("unchecked") && !reason.contains("Update both")) throw new AssertionError(reason);
                     if ((mode.equals("missing") || mode.equals("register-only")) && !reason.contains("No Guardian handshake")) throw new AssertionError(reason);
                     if (mode.equals("old") && !reason.contains("Update both")) throw new AssertionError(reason);
                     System.out.printf("PASS %s: correctly rejected (%.2fs)%n", mode, (System.nanoTime() - started) / 1e9); return;
@@ -125,6 +148,6 @@ public class GuardianWireProbe implements AutoCloseable {
     }
     public void close() throws IOException { socket.close(); }
     public static void main(String[] args) throws Exception {
-        check("clean", true); check("late", true); check("legacy", true); check("blocked", false); check("old", false); check("missing", false); check("register-only", false);
+        check("clean", true); check("late", true); check("legacy", true); check("blocked", false); check("xray", false); check("unchecked", false); check("reload-xray", false); check("old", false); check("missing", false); check("register-only", false);
     }
 }

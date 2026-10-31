@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit
 /** Client reports are an admission policy, not trusted proof of client integrity. */
 class ClientGuard(private val plugin: JavaPlugin) : Listener, PluginMessageListener {
     private data class Pending(val playerId: UUID?, val nonce: String = UUID.randomUUID().toString(), val handshake: GuardHandshake = GuardHandshake())
+    private data class Admitted(val connection: PlayerConnection, val nonce: String)
+    private val admitted = ConcurrentHashMap<UUID, Admitted>()
     private val pending = ConcurrentHashMap<PlayerConnection, Pending>()
     private lateinit var rules: JsonObject
     private var enabled = true
@@ -82,20 +84,20 @@ class ClientGuard(private val plugin: JavaPlugin) : Listener, PluginMessageListe
             })
             val blockedIds = rules["mod-ids"].asJsonArray.map { it.asString }.toSet()
             when (ClientGuardReport.evaluate(bytes, request.nonce, blockedIds)) {
-                ClientGuardDecision.ALLOW -> Unit
+                ClientGuardDecision.ALLOW -> request.playerId?.let { admitted[it] = Admitted(connection, request.nonce) }
                 ClientGuardDecision.SCAN_FAILED -> reject(connection, "Mod verification failed. Check your client log and mods folder, then reconnect.")
-                ClientGuardDecision.BLOCKED -> reject(connection, "A blocked mod was detected. Remove prohibited mods and restart Minecraft.")
+                ClientGuardDecision.BLOCKED -> reject(connection, "A blocked mod or Xray resource pack was detected. Remove it and restart Minecraft.")
             }
         } catch (_: java.util.concurrent.TimeoutException) {
             if (!request.handshake.isReady) {
-                reject(connection, "This server requires Guardian 1.0.1 and Fabric API for Minecraft 26.3. No Guardian handshake was received.")
+                reject(connection, "This server requires Guardian 1.0.2 and Fabric API for Minecraft 26.3. No Guardian handshake was received.")
             } else {
                 plugin.logger.warning("Guardian scan timed out for ${request.playerId} after ${timeoutSeconds}s")
                 reject(connection, "Guardian connected, but the mod scan timed out. Check your client log and reconnect.")
             }
         } catch (error: Exception) {
             if (connection.isConnected) plugin.logger.warning("Guardian handshake failed for ${request.playerId}: ${error.cause?.message ?: error.message}")
-            reject(connection, "Guardian verification failed. Update both the server plugin and client mod to 1.0.1.")
+            reject(connection, "Guardian verification failed. Update both the server plugin and client mod to 1.0.2.")
         } finally { pending.remove(connection, request) }
     }
 
@@ -105,13 +107,26 @@ class ClientGuard(private val plugin: JavaPlugin) : Listener, PluginMessageListe
 
     @EventHandler
     fun onConnectionClose(event: PlayerConnectionCloseEvent) {
+        admitted.entries.removeIf { (id, state) -> id == event.playerUniqueId && !state.connection.isConnected }
         pending.entries.removeIf { (connection, request) ->
             if (request.playerId != event.playerUniqueId || connection.isConnected) false
             else { request.handshake.close(); true }
         }
     }
 
-    override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) = Unit
+    override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {
+        if (!enabled || channel != RESPONSE) return
+        val state = admitted[player.uniqueId] ?: return
+        val reason = try {
+            val blockedIds = rules["mod-ids"].asJsonArray.map { it.asString }.toSet()
+            when (ClientGuardReport.evaluate(message, state.nonce, blockedIds)) {
+                ClientGuardDecision.ALLOW -> null
+                ClientGuardDecision.BLOCKED -> "An Xray resource pack was detected. Disable it before reconnecting."
+                ClientGuardDecision.SCAN_FAILED -> "Resource pack verification failed. Check your client log and reconnect."
+            }
+        } catch (_: Exception) { "Invalid Guardian resource pack report. Please reconnect." }
+        if (reason != null) player.kick(Component.text(reason))
+    }
 
     override fun onPluginMessageReceived(channel: String, connection: PlayerConnection, message: ByteArray) {
         val request = pending[connection] ?: return
@@ -124,6 +139,7 @@ class ClientGuard(private val plugin: JavaPlugin) : Listener, PluginMessageListe
     fun close() {
         pending.values.forEach { it.handshake.close() }
         pending.clear()
+        admitted.clear()
         plugin.server.messenger.unregisterIncomingPluginChannel(plugin, HELLO, this)
         plugin.server.messenger.unregisterIncomingPluginChannel(plugin, RESPONSE, this)
         plugin.server.messenger.unregisterOutgoingPluginChannel(plugin, CHALLENGE)

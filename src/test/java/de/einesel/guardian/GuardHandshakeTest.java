@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GuardHandshakeTest {
-    private static final byte[] HELLO = "{\"protocol\":1,\"version\":\"1.0.1\"}".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] HELLO = "{\"protocol\":1,\"version\":\"1.0.2\"}".getBytes(StandardCharsets.UTF_8);
     private static final byte[] REPORT = "report".getBytes(StandardCharsets.UTF_8);
 
     @Test void remembersHelloBeforeConfigurationStarts() {

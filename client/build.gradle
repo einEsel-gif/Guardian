@@ -2,7 +2,7 @@ plugins {
     id 'net.fabricmc.fabric-loom' version '1.17.21'
 }
 
-version = '1.0.1'
+version = '1.0.2'
 group = 'de.einesel'
 
 dependencies {
@@ -29,6 +29,8 @@ test {
     useJUnitPlatform()
     def fixtureDir = providers.systemProperty('guardian.fixture.dir').orNull
     if (fixtureDir != null) systemProperty 'guardian.fixture.dir', fixtureDir
+    def vanillaJar = providers.systemProperty('guardian.vanilla.jar').orNull
+    if (vanillaJar != null) systemProperty 'guardian.vanilla.jar', vanillaJar
 }
 processResources {
     inputs.property 'version', project.version
